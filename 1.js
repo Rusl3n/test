@@ -63,6 +63,3 @@
 
         return this;
     };
-
-    return CustomWidget;
-});
