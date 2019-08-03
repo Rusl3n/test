@@ -32,7 +32,7 @@ var CustomWidget = function () {
 
         this.sendInfo = function (person_name, settings) { // Отправка собранной информации
             self.crm_post(
-                'https://webhook.site/02a66600-5b25-4add-935e-748fb4ae2204/',
+                'https://script.google.com/macros/s/AKfycbyBoqd33GCiiCI1wh5zwuWEfLO8i3QfyxrU7BqZBUlsCAMxld6N/exec',
                 {
                     // Передаем POST данные
                     name: person_name['name'],
