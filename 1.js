@@ -37,7 +37,8 @@ var CustomWidget = function () {
                     // Передаем POST данные
                     name: person_name['name'],
                     phones: person_name['phones'],
-                    emails: person_name['emails']
+                    emails: person_name['emails'],
+                    text: 'text'
                 },
                 function (msg) {
                 },
