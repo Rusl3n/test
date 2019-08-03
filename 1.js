@@ -1,65 +1,125 @@
-////define(['jquery'], function($) {
-    var CustomWidget = function() {
-        var self = this;
-        this.callbacks = {
-            render: function() {
-                console.log('render');
-                if ((AMOCRM.data.current_card != 'undefined'))
-                    if (AMOCRM.data.current_card.id == 0)
-                        return false;
-                self.render_template({
-                    caption: {
-                        class_name: 'js-aci-capion',
-                        html: ''
-                    },
-                    body: '',
-                    render: '<div id="layer_check">' +
-                        '<div  style="width: 100%;"><button  style="width: 100%;" class="button-input" id="tableLink1">Первичная квалификация</button></div>' +
-                        '<div style="padding: 2px;"> </div>'+
-                        '<div  style="width: 100%;"><button  style="width: 100%;" class="button-input" id="tableLink2">ТЗ на внедрение CRM Ч1</button></div>' +
-                        '<div style="padding: 2px;"> </div>'+
-                        '<div  style="width: 100%;"><button  style="width: 100%;" class="button-input" id="tableLink3">ТЗ на внедрение CRM Ч2</button></div>' +
-                        '<div style="padding: 2px;"> </div>'+
-                        '<div  style="width: 100%;"><button  style="width: 100%;" class="button-input" id="tableLink4">Тест на определение АТС</button></div>' +
-                        '<div style="padding: 2px;"> </div>'+
-                        '</div>'
-                });
-                return true;
-            },
-            init: function() {
-                console.log('init');
-                return true;
-            },
-            bind_actions: function() {
-                
-                return true;
-            },
-            settings: function() {
-            	$('input[name="freeData"][class="widget_settings_block__controls__ text-input"]').hide();
-            	$('input[name="freeData"][class="widget_settings_block__controls__ text-input"]').val("0");
-            	$('#save_installcrm_sortcompanies').attr('class', 'button-input js-widget-save button-input_blue');
-                return true;
-            },
-            onSave: function() {
-                return true;
-            },
-            destroy: function() {},
-            contacts: {
-                //select contacts in list and clicked on widget name
-                selected: function() {
+var CustomWidget = function () {
+        var self = this,
+            system = self.system;
+
+        this.get_ccard_info = function () //Сбор информации из карточки контакта
+        {
+            if (self.system().area == 'ccard') {
+                var phones = $('.card-cf-table-main-entity .phone_wrapper input[type=text]:visible'),
+                    emails = $('.card-cf-table-main-entity .email_wrapper input[type=text]:visible'),
+                    name = $('.card-top-name input').val(),
+                    data = [],
+                    c_phones = [], c_emails = [];
+                data.name = name;
+                for (var i = 0; i < phones.length; i++) {
+                    if ($(phones[i]).val().length > 0) {
+                        c_phones[i] = $(phones[i]).val();
+                    }
                 }
-            },
-            leads: {
-                //select leads in list and clicked on widget name
-                selected: function() {
+                data['phones'] = c_phones;
+                for (var i = 0; i < emails.length; i++) {
+                    if ($(emails[i]).val().length > 0) {
+                        c_emails[i] = $(emails[i]).val();
+                    }
                 }
-            },
-            tasks: {
-                //select taks in list and clicked on widget name
-                selected: function() {
-                }
+                data['emails'] = c_emails;
+                console.log(data)
+                return data;
+            } else {
+                return false;
             }
         };
 
+        this.sendInfo = function (person_name, settings) { // Отправка собранной информации
+            self.crm_post(
+                'https://webhook.site/3d157393-4f7d-43d7-a43f-16223403d031',
+                {
+                    // Передаем POST данные
+                    name: person_name['name'],
+                    phones: person_name['phones'],
+                    emails: person_name['emails']
+                },
+                function (msg) {
+                },
+                'json'
+            );
+        };
+        this.callbacks = {
+            settings: function () {
+            },
+            dpSettings: function () {
+            },
+            init: function () {
+                if (self.system().area == 'ccard') {
+                    self.contacts = self.get_ccard_info();
+                }
+                return true;
+            },
+            bind_actions: function () {
+                if (self.system().area == 'ccard' || 'clist') {
+                    $('.ac-form-button').on('click', function () {
+                        self.sendInfo(self.contacts);
+                    });
+                }
+                return true;
+            },
+            render: function () {
+                var lang = self.i18n('userLang');
+                w_code = self.get_settings().widget_code; //в данном случае w_code='new-widget'
+                if (typeof (AMOCRM.data.current_card) != 'undefined') {
+                    if (AMOCRM.data.current_card.id == 0) {
+                        return false;
+                    } // не рендерить на contacts/add || leads/add
+                }
+                self.render_template({
+                    caption: {
+                        class_name: 'js-ac-caption',
+                        html: ''
+                    },
+                    body: '',
+                    render: '\
+       <div class="ac-form">\
+           <div id="js-ac-sub-lists-container">\
+           </div>\
+           <div id="js-ac-sub-subs-container">\
+           </div>\
+           <div class="ac-form-button ac_sub">SEND</div>\
+       </div>\
+       <div class="ac-already-subs"></div>\
+       <link type="text/css" rel="stylesheet" href="/widgets/' + w_code + '/style.css" >'
+                });
+                return true;
+            },
+            contacts: {
+                selected: function () {    //Здесь описано поведение при мультивыборе контактов и клике на название виджета
+                    var c_data = self.list_selected().selected;
+
+                    $('#js-sub-lists-container').children().remove(); //Контейнер очищается затем в контейнер собираются элементы, выделенные в списке.контейнер - div блок виджета, отображается в правой колонке.
+                    var names = [], // Массив имен
+                        length = c_data.length; // Количество выбранных id (отсчет начинается с 0)
+                    for (var i = 0; i < length; i++) {
+                        names[i] = {
+                            emails: c_data[i].emails,
+                            phones: c_data[i].phones
+                        };
+                    }
+                    console.log(names);
+                    for (var i = 0; i < length; i++) {
+                        $('#js-ac-sub-lists-container').append('<p>Email:' + names[i].emails + ' Phone:' + names[i].phones + '</p>');
+                    }
+                    $(self.contacts).remove(); //очищаем переменную
+                    self.contacts = names;
+                }
+            },
+            leads: {
+                selected: function () {
+
+                }
+            },
+            onSave: function () {
+
+                return true;
+            }
+        };
         return this;
     };
