@@ -1,4 +1,4 @@
-//define(['jquery'], function($) {
+////define(['jquery'], function($) {
     var CustomWidget = function() {
         var self = this;
         this.callbacks = {
